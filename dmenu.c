@@ -22,7 +22,7 @@
 
 /* macros */
 #define INTERSECT(x,y,w,h,r)  (MAX(0, MIN((x)+(w),(r).x_org+(r).width)  - MAX((x),(r).x_org)) \
-                             * MAX(0, MIN((y)+(h),(r).y_org+(r).height) - MAX((y),(r).y_org)))
+                            && MAX(0, MIN((y)+(h),(r).y_org+(r).height) - MAX((y),(r).y_org)))
 #define LENGTH(X)             (sizeof X / sizeof X[0])
 #define TEXTW(X)              (drw_fontset_getwidth(drw, (X)) + lrpad)
 
@@ -390,6 +390,13 @@ match(void)
 		matchend = substrend;
 	}
 	curr = sel = matches;
+
+	if(instant && matches && matches==matchend && !lsubstr) {
+		puts(matches->text);
+		cleanup();
+		exit(0);
+	}
+
 	calcoffsets();
 }
 
@@ -454,6 +461,10 @@ keypress(XKeyEvent *ev)
 
 	if (ev->state & ControlMask) {
 		switch(ksym) {
+		case XK_h: ksym = XK_Up;        break;
+		case XK_j: ksym = XK_Down;      break;
+		case XK_k: ksym = XK_Up;        break;
+		case XK_l: ksym = XK_Down;      break;
 		case XK_a: ksym = XK_Home;      break;
 		case XK_b: ksym = XK_Left;      break;
 		case XK_c: ksym = XK_Escape;    break;
@@ -461,19 +472,13 @@ keypress(XKeyEvent *ev)
 		case XK_e: ksym = XK_End;       break;
 		case XK_f: ksym = XK_Right;     break;
 		case XK_g: ksym = XK_Escape;    break;
-		case XK_h: ksym = XK_BackSpace; break;
 		case XK_i: ksym = XK_Tab;       break;
-		case XK_j: /* fallthrough */
 		case XK_J: /* fallthrough */
 		case XK_m: /* fallthrough */
 		case XK_M: ksym = XK_Return; ev->state &= ~ControlMask; break;
 		case XK_n: ksym = XK_Down;      break;
 		case XK_p: ksym = XK_Up;        break;
 
-		case XK_k: /* delete right */
-			text[cursor] = '\0';
-			match();
-			break;
 		case XK_u: /* delete left */
 			insert(NULL, 0 - cursor);
 			break;
@@ -514,8 +519,8 @@ keypress(XKeyEvent *ev)
 		case XK_g: ksym = XK_Home;  break;
 		case XK_G: ksym = XK_End;   break;
 		case XK_h: ksym = XK_Up;    break;
-		case XK_j: ksym = XK_Next;  break;
-		case XK_k: ksym = XK_Prior; break;
+		case XK_j: ksym = XK_Down; break;
+		case XK_k: ksym = XK_Up;  break;
 		case XK_l: ksym = XK_Down;  break;
 		default:
 			return;
@@ -844,7 +849,9 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-i")) { /* case-insensitive item matching */
 			fstrncmp = strncasecmp;
 			fstrstr = cistrstr;
-		} else if (i + 1 == argc)
+		} else if (!strcmp(argv[i], "-n")) /* instant select only match */
+			instant = 1;
+		else if (i + 1 == argc)
 			usage();
 		/* these options take one argument */
 		else if (!strcmp(argv[i], "-l"))   /* number of lines in vertical list */
